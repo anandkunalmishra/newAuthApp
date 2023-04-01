@@ -1,12 +1,19 @@
+// Dependencies
 const express = require("express");
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 require("dotenv").config();
-const app = express();
+
+// Models
 const User = require('./model/user');
+
+// Connect to database
 require('./config/database').connect();
 
-// Middlewares
+// Create express app
+const app = express();
+
+// Middleware
 app.use(express.json());
 
 // Routes
@@ -56,6 +63,39 @@ app.post("/register", async (req, res) => {
     // Return user object with token
     res.status(201).json(user);
   } catch (error) {
+    console.log(error);
+    res.status(500).send("Internal server error");
+  }
+});
+
+app.post("/login",async (req,res) => {
+  try {
+    const {email , password} = req.body;
+  
+    if(!(email && password)){
+      res.status(400).send("Fields are missing");
+    }
+
+    const user = await User.findOne({email});
+
+    if(user && (await bcrypt.compare(password,user.password))){
+      const token = jwt.sign(
+        {user_id: user._id,email},
+        process.env.SECRET_KEY,
+        {
+          expiresIn: "2h",
+        }
+      );
+      user.token = token;
+      user.password = undefined;
+
+      res.status(201).json(user);
+
+    } else {
+      res.status(401).send("Invalid login credentials");
+    }
+  } 
+  catch (error) {
     console.log(error);
     res.status(500).send("Internal server error");
   }
