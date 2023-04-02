@@ -2,10 +2,12 @@
 const express = require("express");
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const cookieParser = require('cookie-parser');
 require("dotenv").config();
 
 // Models
 const User = require('./model/user');
+const auth = require('./middleware/auth');
 
 // Connect to database
 require('./config/database').connect();
@@ -15,6 +17,7 @@ const app = express();
 
 // Middleware
 app.use(express.json());
+app.use(cookieParser());
 
 // Routes
 app.get("/", (req, res) => {
@@ -89,7 +92,21 @@ app.post("/login",async (req,res) => {
       user.token = token;
       user.password = undefined;
 
-      res.status(201).json(user);
+      // res.status(201).json(user);
+
+      //if you want to use cookies
+      const options = {
+        expires: new Date(Date.now() + 3*24*60*60*1000),
+        httpOnly: true,
+      };
+
+      res.status(200).cookie('token',token,options).json({
+        success: true,
+        token,
+        user,
+      })
+
+      
 
     } else {
       res.status(401).send("Invalid login credentials");
@@ -100,6 +117,11 @@ app.post("/login",async (req,res) => {
     res.status(500).send("Internal server error");
   }
 });
+
+app.get("/dashboard",auth , (req,res)=>{
+  res.send("Welcome to Secret Information");
+
+})
 
 // Export app
 module.exports = app;
